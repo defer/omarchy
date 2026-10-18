@@ -22,6 +22,8 @@ Item {
   property int powerProfileSignals: 0
   property int powerProfileReadSignals: 0
   readonly property bool powerSaverOnBattery: BatteryModel.isPowerSaverOnBattery(UPower.onBattery, activePowerProfile)
+  readonly property var notificationService: shell ? shell.firstPartyServiceFor("omarchy.notifications") : null
+  property string lowBatteryTitle: ""
 
   PersistentProperties {
     id: persisted
@@ -41,6 +43,12 @@ Item {
     var state = BatteryModel.shouldWarnLowBattery(UPower.displayDevice, UPower.onBattery, UPowerDeviceState.Discharging, batteryThreshold, persisted.notifiedLowBattery)
     persisted.notifiedLowBattery = state.notifiedLowBattery
     if (state.notify) sendLowBatteryWarning(state.level)
+    if (state.dismiss) dismissStaleLowBatteryWarning()
+  }
+
+  function dismissStaleLowBatteryWarning() {
+    if (persisted.notifiedLowBattery || !lowBatteryTitle || !notificationService) return
+    notificationService.dismissBySummary(lowBatteryTitle)
   }
 
   function sendLowBatteryWarning(level) {
@@ -84,6 +92,24 @@ Item {
   }
 
   Process { id: warningProcess }
+
+  Process {
+    id: lowBatteryTitleProcess
+    command: ["omarchy-i18n", "battery.lowTitle"]
+    running: true
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.lowBatteryTitle = text.trim()
+        root.dismissStaleLowBatteryWarning()
+      }
+    }
+  }
+
+  Connections {
+    target: root.notificationService ? root.notificationService.popupModel : null
+    function onCountChanged() { Qt.callLater(root.dismissStaleLowBatteryWarning) }
+  }
 
   Process {
     id: powerProfileProcess
