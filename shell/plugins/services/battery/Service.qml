@@ -23,7 +23,7 @@ Item {
   property int powerProfileReadSignals: 0
   readonly property bool powerSaverOnBattery: BatteryModel.isPowerSaverOnBattery(UPower.onBattery, activePowerProfile)
   readonly property var notificationService: shell ? shell.firstPartyServiceFor("omarchy.notifications") : null
-  property string lowBatteryTitle: ""
+  property bool lowBatteryRecovered: false
 
   PersistentProperties {
     id: persisted
@@ -42,13 +42,14 @@ Item {
   function checkBattery() {
     var state = BatteryModel.shouldWarnLowBattery(UPower.displayDevice, UPower.onBattery, UPowerDeviceState.Discharging, batteryThreshold, persisted.notifiedLowBattery)
     persisted.notifiedLowBattery = state.notifiedLowBattery
+    lowBatteryRecovered = state.dismiss
     if (state.notify) sendLowBatteryWarning(state.level)
-    if (state.dismiss) dismissStaleLowBatteryWarning()
+    dismissStaleLowBatteryWarning()
   }
 
   function dismissStaleLowBatteryWarning() {
-    if (persisted.notifiedLowBattery || !lowBatteryTitle || !notificationService) return
-    notificationService.dismissBySummary(lowBatteryTitle)
+    if (!lowBatteryRecovered || !notificationService) return
+    notificationService.dismissByAppIcon("omarchy-action", "battery-caution")
   }
 
   function sendLowBatteryWarning(level) {
@@ -93,17 +94,10 @@ Item {
 
   Process { id: warningProcess }
 
-  Process {
-    id: lowBatteryTitleProcess
-    command: ["omarchy-i18n", "battery.lowTitle"]
-    running: true
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.lowBatteryTitle = text.trim()
-        root.dismissStaleLowBatteryWarning()
-      }
-    }
+  Connections {
+    target: UPower.displayDevice
+    function onIsPresentChanged() { root.checkBattery() }
+    function onStateChanged() { root.checkBattery() }
   }
 
   Connections {

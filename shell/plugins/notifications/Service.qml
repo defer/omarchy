@@ -354,18 +354,26 @@ Item {
     removePopup(index, "dismiss")
   }
 
-  function dismissBySummary(summary) {
-    var needle = String(summary || "")
-    if (!needle) return false
+  function dismissWhere(matches) {
     var hit = false
     for (var i = popupModel.count - 1; i >= 0; i--) {
       var row = popupModel.get(i)
-      if (row && String(row.summary || "").indexOf(needle) !== -1) {
+      if (row && matches(row)) {
         dismissPopup(i)
         hit = true
       }
     }
     return hit
+  }
+
+  function dismissBySummary(summary) {
+    var needle = String(summary || "")
+    if (!needle) return false
+    return dismissWhere(function(row) { return String(row.summary || "").indexOf(needle) !== -1 })
+  }
+
+  function dismissByAppIcon(app, appIcon) {
+    return dismissWhere(function(row) { return row.app === app && row.appIcon === appIcon })
   }
 
   function expirePopup(index) {
