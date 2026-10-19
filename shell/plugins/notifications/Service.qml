@@ -354,28 +354,6 @@ Item {
     removePopup(index, "dismiss")
   }
 
-  function dismissWhere(matches) {
-    var hit = false
-    for (var i = popupModel.count - 1; i >= 0; i--) {
-      var row = popupModel.get(i)
-      if (row && matches(row)) {
-        dismissPopup(i)
-        hit = true
-      }
-    }
-    return hit
-  }
-
-  function dismissBySummary(summary) {
-    var needle = String(summary || "")
-    if (!needle) return false
-    return dismissWhere(function(row) { return String(row.summary || "").indexOf(needle) !== -1 })
-  }
-
-  function dismissByAppIcon(app, appIcon) {
-    return dismissWhere(function(row) { return row.app === app && row.appIcon === appIcon })
-  }
-
   function expirePopup(index) {
     removePopup(index, "expire")
   }
@@ -981,7 +959,17 @@ Item {
     // Take a toast off the screen by summary substring, used by the
     // first-run notifications once their action has been clicked.
     function dismiss(summary: string): string {
-      return service.dismissBySummary(summary) ? "ok" : "none"
+      var needle = String(summary || "")
+      if (!needle) return "none"
+      var hit = false
+      for (var i = popupModel.count - 1; i >= 0; i--) {
+        var row = popupModel.get(i)
+        if (row && String(row.summary || "").indexOf(needle) !== -1) {
+          service.dismissPopup(i)
+          hit = true
+        }
+      }
+      return hit ? "ok" : "none"
     }
 
     function ping(): string { return "ok" }

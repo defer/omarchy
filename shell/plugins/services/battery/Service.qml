@@ -44,16 +44,25 @@ Item {
     persisted.notifiedLowBattery = state.notifiedLowBattery
     lowBatteryRecovered = state.dismiss
     if (state.notify) sendLowBatteryWarning(state.level)
-    dismissStaleLowBatteryWarning()
+    reconcileLowBatteryWarnings()
   }
 
-  function dismissStaleLowBatteryWarning() {
-    if (!lowBatteryRecovered || !notificationService) return
-    notificationService.dismissByAppIcon("omarchy-action", "battery-caution")
+  function popupRows() {
+    var rows = []
+    var model = notificationService ? notificationService.popupModel : null
+    for (var i = 0; model && i < model.count; i++) rows.push(model.get(i))
+    return rows
+  }
+
+  function reconcileLowBatteryWarnings() {
+    if (!notificationService) return
+    var dismiss = BatteryModel.lowBatteryWarningsToDismiss(popupRows(), lowBatteryRecovered, persisted.notifiedLowBattery)
+    for (var i = dismiss.length - 1; i >= 0; i--) notificationService.dismissPopup(dismiss[i])
   }
 
   function sendLowBatteryWarning(level) {
     if (warningProcess.running) return
+    if (BatteryModel.hasLowBatteryWarning(popupRows())) return
     warningProcess.command = [
       "omarchy-battery-low",
       String(level)
@@ -102,7 +111,7 @@ Item {
 
   Connections {
     target: root.notificationService ? root.notificationService.popupModel : null
-    function onCountChanged() { Qt.callLater(root.dismissStaleLowBatteryWarning) }
+    function onCountChanged() { Qt.callLater(root.reconcileLowBatteryWarnings) }
   }
 
   Process {

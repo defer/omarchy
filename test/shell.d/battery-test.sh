@@ -46,6 +46,27 @@ assertDeepEqual(
   'battery leaves notifications alone without a battery'
 )
 
+const warning = { app: 'omarchy-action', appIcon: 'battery-caution', summary: 'Time to recharge!' }
+const translatedWarning = { app: 'omarchy-action', appIcon: 'battery-caution', summary: 'Hora de carregar!' }
+const other = { app: 'omarchy-action', appIcon: 'audio-volume-high', summary: 'Time to recharge!' }
+assert(battery.hasLowBatteryWarning([other, warning]), 'battery finds a warning already on screen')
+assert(!battery.hasLowBatteryWarning([other]), 'battery matches the warning by sender and icon, not title')
+assertDeepEqual(
+  battery.lowBatteryWarningsToDismiss([warning, other, translatedWarning], true, false),
+  [0, 2],
+  'battery dismisses every warning once recovered, whatever its language'
+)
+assertDeepEqual(
+  battery.lowBatteryWarningsToDismiss([warning, other, translatedWarning], false, true),
+  [2],
+  'battery keeps only the newest warning while low'
+)
+assertDeepEqual(
+  battery.lowBatteryWarningsToDismiss([warning, translatedWarning], false, false),
+  [],
+  'battery leaves warnings alone before it knows the battery state'
+)
+
 const reply = profile => JSON.stringify({ type: 's', data: profile })
 assertEqual(battery.parseActiveProfile(reply('power-saver')), 'power-saver', 'battery parses the busctl profile reply')
 assertEqual(battery.parseActiveProfile(''), '', 'battery reads a missing daemon as no profile')
